@@ -48,3 +48,7 @@ https://github.com/migueldeicaza/gui.cs
 
 * Windows Terminal does not yet support mouse - use standard command shell
 
+# Feedback
+
+* send feedback to: luke @ marmaladefoo . com
+
