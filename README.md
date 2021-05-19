@@ -29,6 +29,10 @@ Menu showing the structure of a page
 
 ![](screenshot_structure_menu.png)
 
+# Download
+
+A binary download for Windows x64 is available on https://www.marmaladefoo.com/pages/romulus
+
 # Building
 
 Romulus is a .NET Core C# application, so it should be able to be compiled on the supported platforms, including Windows and Linux.
