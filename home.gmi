@@ -1,0 +1,32 @@
+```
+   ┬─┐                    ┌─┐             ┌─┐             
+   │ │┌─┐┌┬┐┬ ┬┬  ┬ ┬┌─┐  │  ┌─┐┌┬┐┬┌┐┌┬  │  ┬  ┬┌─┐┌┐┌┌┬┐
+   ├┬┘│ │││││ ││  │ │└─┐  │ ┬├┤ ││││││││  │  │  │├┤ │││ │ 
+   ┴└─└─┘┴ ┴└─┘┴─┘└─┘└─┘  └─┘└─┘┴ ┴┴┘└┘┴  └─┘┴─┘┴└─┘┘└┘ ┴ 
+```
+
+Romulus is a cross-platform, Gemini console client, written in C#. Like every Gemini client, it has its own style of interaction and rendering - some key features include:
+
+* Keyboard driven, but responsive to mouse events as well.
+* Monochrome yet beautiful gemtext rendering, by using whitespace and layout to indicate the page elements and structure. Fixes vertical spacing between elements for a global homogenous gemtext style.
+* Aims to provide a quiet UI, focussing on showing the content in a simple yet attractive way, avoiding UI noise.
+* Fast history navigation, remembering page offset.
+* Menu for common commands and bookmarks.
+
+This page serves as the home page for Romulus, its own simple help file and user bookmark list. On startup, the content is read from "home.gmi" in the same folder as the application.
+
+# Using Romulus
+
+* Use your cursor keys or mouse wheel to scroll through the content. Page Up and Page Down work as expected.
+* Press Enter to activate a link, or double click with your mouse.
+* Use Alt to open the menu. To go back, press Alt-B.
+
+# Bookmarks
+
+Links in this file are also shown on the bookmarks menu. You can add a bookmark from the menu. To remove one, simply edit the home.gmi file. Here are some links to get you going:
+
+=> gemini://gemini.circumlunar.space/ Gemini project home
+=> gemini://geminispace.info/search Search with geminispace.info
+=> gemini://gemini.marmaladefoo.com/romulus Romulus home in Gemini space
+
+User bookmarks can be added below.
