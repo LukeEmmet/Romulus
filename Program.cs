@@ -59,9 +59,9 @@ namespace Romulus
 				{
 					startUrl = commandLineApplication.RemainingArguments[0].ToString();     //use the first one
 					if (TextIsUri(startUrl))
-                    {
+					{
 						_initialUri = new Uri(startUrl);
-                    }
+					}
 				}
 
 				//insecure = (bool)insecureFlag.HasValue();
@@ -187,10 +187,10 @@ namespace Romulus
 
 					var accel = line.Line.Substring(0, 1);
 					if (!accelerators.Contains(accel))
-                    {
+					{
 						menuPrefix = "_";
 						accelerators.Add(accel);
-                    }
+					}
 					bms.Add(new MenuItem()
 					{
 						Title = line.LineType.Replace("#", " ").Substring(1) +
@@ -245,10 +245,10 @@ namespace Romulus
 			var targetUrl = InputBox("Gemini URL", "Enter the Gemini URL to load:", "");
 			if (targetUrl != "")
 			{
-				if (!targetUrl.StartsWith("gemini://"))		//user may omit scheme and just give domain etc.
-                {
+				if (!targetUrl.StartsWith("gemini://"))     //user may omit scheme and just give domain etc.
+				{
 					targetUrl = "gemini://" + targetUrl;
-                }
+				}
 
 				var uri = new Uri(targetUrl);
 				LoadLink(uri);
@@ -567,19 +567,13 @@ namespace Romulus
 							displayLines.Add(new GeminiLine(Utils.TabsToSpaces(wrapLine), lineType, linkTarget, count > 1, false));
 							count++;
 						}
-
-
 					}
 				}
-
-
 			}
 
 			BuildStructureMenu(displayLines);
 			lineView.SetSource(displayLines);
 		}
-
-
 
 		static void MsgBoxOK(string title, string message)
 		{
@@ -661,7 +655,6 @@ namespace Romulus
 			}
 		}
 
-
 		// cross platform - launch the system web browser with the supplied url
 		// based on https://brockallen.com/2016/09/24/process-start-for-urls-on-net-core/
 		// hack because of this: https://github.com/dotnet/corefx/issues/10361
@@ -701,21 +694,21 @@ namespace Romulus
 		}
 
 		static void AddBookmark()
-        {
+		{
 			var bookmarkContent = ReadAboutSchemeFile(_homeUri);
 			var found = false;
 			var pageTitle = "";
-			
+
 			//check if the bookmark is already in the list
 			foreach (var line in bookmarkContent.Split("\n"))
-            {
+			{
 				var lineData = Utils.ParseGeminiLink(line);
 				if (lineData[0] == _currentUri.AbsoluteUri)
-                {
+				{
 					found = true;
 					break;
-                }
-            }
+				}
+			}
 
 			if (found)
 			{
@@ -727,46 +720,43 @@ namespace Romulus
 
 				if (_structureMenu.Children.Length > 0)
 				{
-					pageTitle = _structureMenu.Children[0].Title.ToString(); 
+					pageTitle = _structureMenu.Children[0].Title.ToString();
 					if (pageTitle.StartsWith("_"))
 					{
 						pageTitle = pageTitle.Substring(1);
 					}
-					bookmarkContent += " " + pageTitle + " - " + (_currentUri.Scheme == "about" ? _currentUri.AbsoluteUri : _currentUri.Authority);		//add this for context
+					bookmarkContent += " " + pageTitle + " - " + (_currentUri.Scheme == "about" ? _currentUri.AbsoluteUri : _currentUri.Authority);     //add this for context
 				}
 
 				WriteAboutSchemeFile(_homeUri, bookmarkContent);
 
 				if (_currentUri.AbsoluteUri == _homeUri.AbsoluteUri)
-                {
+				{
 					//user added link to home page, so reload it
 					var homeOffset = _lineView.TopItem;
 					var homeSelected = _lineView.SelectedItem;
 					Reload();
 					_lineView.TopItem = homeOffset;
 					_lineView.SelectedItem = homeSelected;
-                }
+				}
 
 				LoadBookmarks();
 				MsgBoxOK("Bookmark added", "Bookmark added to: " + _currentUri.AbsoluteUri);
-
 			}
-        }
+		}
 
 		static void LoadBookmarks()
 		{
-
 			var homeLines = ReadAboutSchemeFile(_homeUri).Split("\n");
-
 			var bms = new List<MenuItem>();
 
 			bms.Add(new MenuItem()
 			{
 				Title = "Add bookmark",
 				Action = () =>
-                {
+				{
 					AddBookmark();
-                }
+				}
 			});
 
 			bms.Add(new MenuItem()
@@ -786,20 +776,18 @@ namespace Romulus
 						{
 							LoadLink(new Uri(linkinfo[0]));
 						}
-
 					});
 				}
 			}
-
 			_bookmarksMenu.Children = bms.ToArray();
 		}
+
 		public class CachedPage
 		{
 			public Uri uri;
 			public string content;
 			public int top;
 			public int selected;
-
 
 			public CachedPage(Uri pageUri, string pageContent, int topItem, int selectedItem)
 			{
@@ -827,7 +815,6 @@ namespace Romulus
 				return s;
 			}
 
-
 			public GeminiLine(string line, string lineType, string linkTarget = "", bool isWrappedLine = false, bool preformat = false)
 			{
 				_lineType = lineType;
@@ -835,13 +822,11 @@ namespace Romulus
 
 				var prefix = "";
 				var text = "";
-
 				const int paraIndent = 2;
 				const int bulletIndent = 3;
 				const int linkIndent = 3;
 				const int preformatIndent = 4;
 				const int quoteIndent = 3;
-
 
 				if (preformat)
 				{
@@ -849,7 +834,6 @@ namespace Romulus
 					_display = Space(preformatIndent) + line;
 					return;
 				}
-
 
 				text = line;
 
@@ -913,7 +897,6 @@ namespace Romulus
 					//normal para
 					prefix = Space(paraIndent);
 				}
-
 				_display = prefix + Utils.TabsToSpaces(text);
 
 			}
