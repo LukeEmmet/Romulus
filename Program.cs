@@ -245,6 +245,11 @@ namespace Romulus
 			var targetUrl = InputBox("Gemini URL", "Enter the Gemini URL to load:", "");
 			if (targetUrl != "")
 			{
+				if (!targetUrl.StartsWith("gemini://"))		//user may omit scheme and just give domain etc.
+                {
+					targetUrl = "gemini://" + targetUrl;
+                }
+
 				var uri = new Uri(targetUrl);
 				LoadLink(uri);
 			}
