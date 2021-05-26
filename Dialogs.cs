@@ -115,13 +115,13 @@ namespace Romulus
 		}
 
 		private static void ConditionalFocusTo(View.KeyEventEventArgs e, View target, Key handleKey)
-        {
+		{
 			if (e.KeyEvent.Key == handleKey)
-            {
+			{
 				e.Handled = true;  //to ensure no further processing of the event
 				target.SetFocus();
 			}
-        }
+		}
 
 		//multiline text input with word wrap
 		public static TextDialogResponse MultilineInputBox(string title, string prompt, string initialValue)
@@ -131,7 +131,7 @@ namespace Romulus
 			CheckBox checkboxWrap;
 			Button ok;
 			Button cancel;
-			TextView entry = new TextView();
+			TextView entry = new TextView();		//workaround so it can be mentioned in event handler for checkbox
 			Label label;
 
 			label = new Label()
@@ -143,7 +143,7 @@ namespace Romulus
 				Text = prompt
 			};
 
-			 checkboxWrap = new CheckBox("_Wrap text")
+			 checkboxWrap = new CheckBox("Wrap text")
 			{
 				X = 1,
 				Y = 3,

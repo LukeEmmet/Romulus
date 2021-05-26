@@ -27,12 +27,8 @@ namespace Romulus
 		private static Window _win;
 		//private static bool insecure;
 
-
-
 		static void Main(string[] args)
-
 		{
-
 			CommandLineApplication commandLineApplication = new CommandLineApplication(throwOnUnexpectedArg: false);
 
 			//CommandOption cert = commandLineApplication.Option(
@@ -61,7 +57,7 @@ namespace Romulus
 					if (TextIsUri(startUrl))
 					{
 						var candidateUri = new Uri(startUrl);
-						if ((candidateUri.Scheme == "gemini") || (candidateUri.Scheme == "gemini"))
+						if ((candidateUri.Scheme == "gemini") || (candidateUri.Scheme == "about"))
 						{
 							//these are the only valid starup URls
 							_initialUri = candidateUri;
@@ -71,16 +67,12 @@ namespace Romulus
 
 				//insecure = (bool)insecureFlag.HasValue();
 
-
-
 				Application.Init();
 
 				_top = Application.Top;
 
-
 				_history = new Stack<CachedPage>();
 				_aboutFolder = AppDomain.CurrentDomain.BaseDirectory;
-
 
 				_currentUri = null;
 
@@ -92,8 +84,6 @@ namespace Romulus
 				_structureMenu = new MenuBarItem(_structureMenuItems);
 				_structureMenu.Title = "_Structure";
 
-
-
 				_homeMenu = new MenuItem("_Home", "", () => { LoadHandledLink(_homeUri); });
 				_homeMenu.Shortcut = Key.AltMask & Key.H;
 
@@ -103,18 +93,13 @@ namespace Romulus
 				{
 					X = 0,
 					Y = 1, // Leave one row for the toplevel menu
-
 					ColorScheme = Colors.Menu,
-
-
 					// By using Dim.Fill(), it will automatically resize without manual intervention
 					Width = Dim.Fill(),
 					Height = Dim.Fill()
 				};
 
 				_top.Add(_win);
-
-
 
 				_lineView = new ListView()
 				{
@@ -127,16 +112,13 @@ namespace Romulus
 
 				_lineView.OpenSelectedItem += (ListViewItemEventArgs e) =>
 				{
-
 					HandleActivate(e.Value, _currentUri);
 				};
-
-
 
 				// Creates a menubar, the item "New" has a help menu.
 				var menu = new MenuBar(new MenuBarItem[] {
 					new MenuBarItem ("_File", new MenuItem [] {
-						new MenuItem("_Open URL", "", () => {LoadUri(); }),
+						new MenuItem("_Open URL", "", () => {OpenUserChosenUri(); }),
 						new MenuItem("_Reload", "", () => {Reload(); }),
 						_homeMenu,
 						new MenuItem ("_Quit", "", () => { if (Quit ()) _top.Running = false; })
@@ -176,11 +158,9 @@ namespace Romulus
 
 		static void BuildStructureMenu(List<GeminiLine> displayLines)
 		{
-
 			var bms = new List<MenuItem>();
 			var lineNum = 1;
 			var accelerators = new List<string>();
-
 			
 			foreach (var line in displayLines)
 			{
@@ -211,10 +191,10 @@ namespace Romulus
 
 				lineNum++;
 			}
-			
 
 			_structureMenu.Children = bms.ToArray();
 		}
+
 		static void GoBack()
 		{
 			if (_history.Count > 1)
@@ -236,6 +216,7 @@ namespace Romulus
 			_win.Title = "Romulus: " + _currentUri.Authority + _currentUri.PathAndQuery;
 
 		}
+
 		static void Reload()
 		{
 			if (_currentUri != null)
@@ -245,24 +226,26 @@ namespace Romulus
 			}
 		}
 
-		private static void LoadUri()
+		private static void OpenUserChosenUri()
 		{
 			var userResponse = Dialogs.SingleLineInputBox("Gemini URL", "Enter the Gemini URL to load:", "");
 			if ((userResponse.ButtonPressed == TextDialogResponse.Buttons.Ok) && 
 				(userResponse.Text != ""))
 			{
 				var targetUrl = userResponse.Text;
-				if(!targetUrl.StartsWith("gemini://"))     //user may omit scheme and just give domain etc.
-				{
-					targetUrl = "gemini://" + targetUrl;
-				}
+				if (!TextIsUri(targetUrl))
+                {
+					if(!targetUrl.StartsWith("gemini://"))     //user may omit scheme and just give domain etc.
+					{
+						targetUrl = "gemini://" + targetUrl;
+					}
+                }
+
 
 				var uri = new Uri(targetUrl);
-				LoadGeminiLink(uri);
+				LoadHandledLink(uri);
 			}
 		}
-
-
 
 		static bool TextIsUri(string text)
 		{
@@ -273,7 +256,14 @@ namespace Romulus
 		static string ReadAboutSchemeFile(Uri uri)
 		{
 			var file = Path.Combine(_aboutFolder, uri.AbsolutePath + ".gmi");        //about:foo is loaded from foo.gmi
-			return File.ReadAllText(file);
+			
+			if (File.Exists(file))
+            {
+				return File.ReadAllText(file);
+            } else
+            {
+				return "No such resource: " + uri.AbsoluteUri;
+            }
 		}
 
 		static void WriteAboutSchemeFile(Uri uri, string content)
@@ -287,7 +277,6 @@ namespace Romulus
 			//special treatment for about: scheme
 			if (uri.Scheme == "about")
 			{
-
 				var result = ReadAboutSchemeFile(uri);
 				RenderGemini(uri.AbsoluteUri, result, _lineView);
 				_history.Push(new CachedPage(uri, result, 0, 0));
@@ -310,15 +299,12 @@ namespace Romulus
 			{
 				//not valid as a page to display
 				Dialogs.MsgBoxOK("Loading link", "Not a valid link to display: " + uri.AbsoluteUri);
-
 			}
 		}
 
 		static void LoadGeminiLink(Uri uri)
 		{
-
 			string result;
-
 			bool retrieved = false;
 			GeminiResponse resp;
 
@@ -335,7 +321,6 @@ namespace Romulus
 				//so we use our own that is better
 				Dialogs.MsgBoxOK("Gemini error", uri.AbsoluteUri + "\n\n" + e.Message);
 			}
-
 
 			if (retrieved)
 			{
@@ -391,7 +376,12 @@ namespace Romulus
 						LoadGeminiLink(ub.Uri);
 					}
 				}
-				else
+				else if ((resp.codeMajor == '5') && (resp.codeMinor == '1'))
+                {
+					//not found
+					Dialogs.MsgBoxOK("Not found", "The resource was not found on the server: \n\n" + resp.uri.AbsoluteUri);
+
+                } else
 				{
 					Dialogs.MsgBoxOK("Gemini server response", uri.AbsoluteUri + "\n\n" + "Status: " + resp.codeMajor + resp.codeMinor + ": " + resp.meta);
 				}
@@ -404,16 +394,17 @@ namespace Romulus
 
 			if ((resp.codeMajor == '2') && (resp.codeMinor == '5'))
 			{
-				//success - fetch the Gemini target
+				//success status 25 - fetch the Gemini target
 				LoadGeminiLink(new Uri(resp.meta));
 			}
 			else
 			{
+				//everything else is a problem for now
 				Dialogs.MsgBoxOK("Error", "Could not send content. Server Message was: " + resp.meta);
 			}
 		}
 
-		static void HandleNimigemActivate(ListView lineView, Uri uri)
+		static void HandleNimigemActivate(Uri uri)
 		{
 			//gather the previous nimigem lines and let the user edit the text
 
@@ -514,6 +505,7 @@ namespace Romulus
 
 				if (TextIsUri(link))
 				{
+					//is a full URL 
 					var uri = new Uri(link);
 
 					if (uri.Scheme == "gemini")
@@ -531,7 +523,7 @@ namespace Romulus
 					}
 					else if (uri.Scheme == "nimigem")
 					{
-						HandleNimigemActivate(_lineView, uri);
+						HandleNimigemActivate(uri);
 					}
 					else
 					{
