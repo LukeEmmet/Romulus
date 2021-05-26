@@ -60,7 +60,12 @@ namespace Romulus
 					startUrl = commandLineApplication.RemainingArguments[0].ToString();     //use the first one
 					if (TextIsUri(startUrl))
 					{
-						_initialUri = new Uri(startUrl);
+						var candidateUri = new Uri(startUrl);
+						if ((candidateUri.Scheme == "gemini") || (candidateUri.Scheme == "gemini"))
+						{
+							//these are the only valid starup URls
+							_initialUri = candidateUri;
+						}
 					}
 				}
 
@@ -89,7 +94,7 @@ namespace Romulus
 
 
 
-				_homeMenu = new MenuItem("_Home", "", () => { LoadLink(_homeUri); });
+				_homeMenu = new MenuItem("_Home", "", () => { LoadHandledLink(_homeUri); });
 				_homeMenu.Shortcut = Key.AltMask & Key.H;
 
 
@@ -117,7 +122,6 @@ namespace Romulus
 					Y = 1,
 					Height = Dim.Fill() - 1,
 					Width = Dim.Fill() - 1,
-
 					ColorScheme = Colors.Menu
 				};
 
@@ -126,8 +130,6 @@ namespace Romulus
 
 					HandleActivate(e.Value, _currentUri);
 				};
-
-				LoadLink(_initialUri);
 
 
 
@@ -152,9 +154,12 @@ namespace Romulus
 				_win.Add(
 					 // The ones with a computed layout system,
 					 _lineView
-
 				);
 
+				_top.Ready += () =>
+				{
+					LoadHandledLink(_initialUri);
+				};
 
 				Application.Run();
 
@@ -235,25 +240,26 @@ namespace Romulus
 		{
 			if (_currentUri != null)
 			{
-				LoadLink(_currentUri);
+				LoadGeminiLink(_currentUri);
 				_history.Pop();      //remove as it will be the same as current Uri, so we only get one history entry
 			}
 		}
 
 		private static void LoadUri()
 		{
-			var targetUrl = InputBox("Gemini URL", "Enter the Gemini URL to load:", "");
-			if (targetUrl != "")
+			var userResponse = Dialogs.SingleLineInputBox("Gemini URL", "Enter the Gemini URL to load:", "");
+			if ((userResponse.ButtonPressed == TextDialogResponse.Buttons.Ok) && 
+				(userResponse.Text != ""))
 			{
-				if (!targetUrl.StartsWith("gemini://"))     //user may omit scheme and just give domain etc.
+				var targetUrl = userResponse.Text;
+				if(!targetUrl.StartsWith("gemini://"))     //user may omit scheme and just give domain etc.
 				{
 					targetUrl = "gemini://" + targetUrl;
 				}
 
 				var uri = new Uri(targetUrl);
-				LoadLink(uri);
+				LoadGeminiLink(uri);
 			}
-
 		}
 
 
@@ -265,34 +271,53 @@ namespace Romulus
 		}
 
 		static string ReadAboutSchemeFile(Uri uri)
-        {
+		{
 			var file = Path.Combine(_aboutFolder, uri.AbsolutePath + ".gmi");        //about:foo is loaded from foo.gmi
 			return File.ReadAllText(file);
-
 		}
 
 		static void WriteAboutSchemeFile(Uri uri, string content)
-        {
+		{
 			var file = Path.Combine(_aboutFolder, uri.AbsolutePath + ".gmi");        //about:foo is loaded from foo.gmi
 			File.WriteAllText(file, content);
-
 		}
-		static void LoadLink(Uri uri)
+
+		static void LoadAboutLink(Uri uri)
 		{
-
-			string result;
-
 			//special treatment for about: scheme
-			if (uri.Scheme == "about") {
+			if (uri.Scheme == "about")
+			{
 
-				result = ReadAboutSchemeFile(uri);
+				var result = ReadAboutSchemeFile(uri);
 				RenderGemini(uri.AbsoluteUri, result, _lineView);
 				_history.Push(new CachedPage(uri, result, 0, 0));
 				SetAsCurrent(uri);
 				return;
 			}
+		}
 
+		static void LoadHandledLink(Uri uri)
+		{
+			if (uri.Scheme == "gemini")
+			{
+				LoadGeminiLink(uri);
+			}
+			else if (uri.Scheme == "about")
+			{
+				LoadAboutLink(uri);
+			}
+			else
+			{
+				//not valid as a page to display
+				Dialogs.MsgBoxOK("Loading link", "Not a valid link to display: " + uri.AbsoluteUri);
 
+			}
+		}
+
+		static void LoadGeminiLink(Uri uri)
+		{
+
+			string result;
 
 			bool retrieved = false;
 			GeminiResponse resp;
@@ -306,8 +331,9 @@ namespace Romulus
 			}
 			catch (Exception e)
 			{
-				//seems to be a bug that the native Messagebox does not resize to show enough content
-				MsgBoxOK("Retrieval error", e.Message);
+				//the native gui.cs Messagebox does not resize to show enough content
+				//so we use our own that is better
+				Dialogs.MsgBoxOK("Gemini error", uri.AbsoluteUri + "\n\n" + e.Message);
 			}
 
 
@@ -336,11 +362,9 @@ namespace Romulus
 							}
 
 						default: // report the mime type only for now
-
 							result = ("Some " + resp.mime + " content was received, but cannot currently be displayed.");
 							break;
 					}
-
 
 					//render the content and add to history
 					SetAsCurrent(resp.uri);		//remember the final URI, since it may have been redirected.
@@ -353,42 +377,140 @@ namespace Romulus
 					_history.Push(new CachedPage(resp.uri, result, 0, 0));
 
 					RenderGemini(resp.uri.AbsoluteUri, result, _lineView);
-
 				}
 				else if (resp.codeMajor == '1')
 				{
-
 					//input requested from server
-					var userText = InputBox("Input request from: " + uri.Authority, resp.meta, "");
+					var userResponse = Dialogs.SingleLineInputBox("Input request from: " + uri.Authority, resp.meta, "");
 
-					if (userText != "")
+					if ((userResponse.ButtonPressed == TextDialogResponse.Buttons.Ok) && (userResponse.Text != ""))
 					{
 						var ub = new UriBuilder(uri);
-						ub.Query = userText;
+						ub.Query = userResponse.Text;
 
-						LoadLink(ub.Uri);
-
+						LoadGeminiLink(ub.Uri);
 					}
-
 				}
 				else
 				{
-					MsgBoxOK("Gemini error", "Status: " + resp.codeMajor + resp.codeMinor + ": " + resp.meta);
+					Dialogs.MsgBoxOK("Gemini server response", uri.AbsoluteUri + "\n\n" + "Status: " + resp.codeMajor + resp.codeMinor + ": " + resp.meta);
 				}
-
 			}
-
-
 		}
 
-		 static void HandleActivate(Object item, Uri currentUri)
+		static void SubmitNimigem(Uri nimigemUri, byte[] payload, string mime)
+		{
+			var resp = (NimigemResponse)Nimigem.Fetch(nimigemUri, payload, mime);
+
+			if ((resp.codeMajor == '2') && (resp.codeMinor == '5'))
+			{
+				//success - fetch the Gemini target
+				LoadGeminiLink(new Uri(resp.meta));
+			}
+			else
+			{
+				Dialogs.MsgBoxOK("Error", "Could not send content. Server Message was: " + resp.meta);
+			}
+		}
+
+		static void HandleNimigemActivate(ListView lineView, Uri uri)
+		{
+			//gather the previous nimigem lines and let the user edit the text
+
+			var preformattedLines = new List<GeminiLine>();
+			var exitedPreformatted = false;
+			var enteredPreformat = false;
+			var foundNimigemEdit = false;
+
+			var currentLine = _lineView.SelectedItem;
+			while (currentLine >= 0)
+			{
+				var gemLine = (GeminiLine)_lineView.Source.ToList()[currentLine];
+				if (gemLine.LineType == "```+")
+				{
+					enteredPreformat = true;
+					foundNimigemEdit = true;        //strictly speaking this will ignore all nimigem areas that are empty...
+				}
+
+				if (enteredPreformat & gemLine.LineType != "```+")
+				{
+					exitedPreformatted = true;
+				}
+
+				if (!exitedPreformatted && enteredPreformat && gemLine.LineType == "```+")
+				{
+					//we found a line in the first preceeding preformatted area
+					preformattedLines.Add(gemLine);
+
+				}
+
+				currentLine--;
+			}
+
+			var sb = new StringBuilder();
+			preformattedLines.Reverse();
+
+			for (int n = 0; n < preformattedLines.Count; n++)
+			{
+				var editLine = preformattedLines[n];
+
+				//nimigem spec requires any required preformatted markers inside 
+				//editable preformatted areas to be escaped with zero width space
+				if (editLine.Line.StartsWith('\u200b'.ToString() + "```"))
+				{
+					sb.Append(editLine.Line.Substring(1));      //trim leading zero width space used to escape preformatted markers
+				}
+				else
+				{
+					sb.Append(editLine.Line);
+				}
+
+				//append newline to all except the last one
+				if (n < preformattedLines.Count - 1)
+				{
+					sb.Append("\n");
+				}
+			}
+
+			if (foundNimigemEdit)
+			{
+				var userEdit = Dialogs.MultilineInputBox("Nimigem edit", "Edit the text to be sent to: " + uri.AbsoluteUri, sb.ToString());
+
+				if (userEdit.ButtonPressed == TextDialogResponse.Buttons.Ok)
+				{
+					try
+					{
+						//send as plain text, utf8
+						SubmitNimigem(uri, Encoding.UTF8.GetBytes(userEdit.Text), "text/plain");
+					}
+					catch (Exception e)
+					{
+						Dialogs.MsgBoxOK("Nimigem error", "Nimigem error: " + e.Message);
+					}
+
+				}
+			}
+			else
+			{
+				//No preceding Nimigem editable preformatted area was found.
+				//send an empty post to the end point
+				try
+				{
+					SubmitNimigem(uri, Encoding.UTF8.GetBytes(""), "text/plain");
+				}
+				catch (Exception e)
+				{
+					Dialogs.MsgBoxOK("Nimigem error", "Nimigem error: " + e.Message);
+				}
+			}
+		}
+
+		static void HandleActivate(Object item, Uri currentUri)
 		{
 			var line = (GeminiLine)item;
 			if (line.LineType == "=>")
 			{
-
 				var link = line.Link;
-
 
 				if (TextIsUri(link))
 				{
@@ -396,31 +518,34 @@ namespace Romulus
 
 					if (uri.Scheme == "gemini")
 					{
-						LoadLink(uri);
-
+						LoadGeminiLink(uri);
+					}
+					else if (uri.Scheme == "about")
+					{
+						LoadAboutLink(uri);
 					}
 					else if (uri.Scheme == "http" || uri.Scheme == "https")
 					{
 						//launch in the system web browser
 						OpenBrowser(uri.AbsoluteUri);
 					}
+					else if (uri.Scheme == "nimigem")
+					{
+						HandleNimigemActivate(_lineView, uri);
+					}
 					else
 					{
 						//nothing else handled at the moment
-						MsgBoxOK("Opening link: " + uri.Scheme, uri.Scheme.ToUpper() + " links are not currently handled.");
+						Dialogs.MsgBoxOK("Opening link: " + uri.Scheme, uri.Scheme.ToUpper() + " links are not currently handled.");
 					}
-
 				}
 				else
 				{
 					//is a relative path, build it relative to current
-
 					var assembledUri = new Uri(currentUri, link);
-					LoadLink(assembledUri);
-
+					LoadGeminiLink(assembledUri);
 				}
 			}
-
 		}
 
 		static bool PrettifyWithExtraLine(string sourceline, string lineType, string lastLine, string lastLogicalType, bool preformat)
@@ -440,14 +565,12 @@ namespace Romulus
 			{
 				return true;
 			}
-
 			return false;
 		}
 
 		static string GetLineType(string sourceline)
 		{
 			var lineType = "p";
-
 
 			if (sourceline.StartsWith("###"))
 			{
@@ -478,7 +601,6 @@ namespace Romulus
 				lineType = "```";
 			}
 
-
 			if (sourceline == "")
 			{
 				lineType = "";
@@ -492,21 +614,18 @@ namespace Romulus
 			var displayLines = new List<GeminiLine>();
 
 			int lineWidth;
-			var getWidth = lineView.GetCurrentWidth(out lineWidth);
-
 			var useContent = rawContent;
 			useContent = useContent.Replace("\r\n", "\n");   //normalise line endings
 
 			var sourcelines = useContent.Split('\n');
 
-			var w = lineView.Width;
 			lineWidth = 70;
 			bool preformat = false;
+			bool isNimigem = false;
 
 			string lastLine = "";
 			string lineType = "";
 			string lastLogicalType = "";
-
 
 			displayLines.Add(new GeminiLine("", ""));       //add a blank line at the top for UI reasons - will be the default selected line
 
@@ -514,7 +633,10 @@ namespace Romulus
 			{
 				lineType = GetLineType(sourceline);
 
-				if (lineType == "```") { preformat = !preformat; }
+				if (lineType == "```") { 
+					preformat = !preformat;
+					isNimigem = sourceline.StartsWith("```✏️");			//first character is pencil edit emoji
+				}
 
 				if (PrettifyWithExtraLine(sourceline, lineType, lastLine, lastLogicalType, preformat))
 				{
@@ -526,12 +648,15 @@ namespace Romulus
 				}
 				lastLine = sourceline;
 
-
 				if (lineType != "```")  //dont render toggle lines		
 				{
 					if (preformat)
 					{
-						displayLines.Add(new GeminiLine(Utils.TabsToSpaces(sourceline), "", "", false, true));
+						if (isNimigem)
+						{
+							lineType = "```+";
+						}
+						displayLines.Add(new GeminiLine(Utils.TabsToSpaces(sourceline), lineType, "", false, true));
 					}
 					else
 					{
@@ -575,85 +700,6 @@ namespace Romulus
 			lineView.SetSource(displayLines);
 		}
 
-		static void MsgBoxOK(string title, string message)
-		{
-			var label = new Label()
-			{
-				X = 1,
-				Y = 1,
-				Width = Dim.Fill(),
-				Height = 4
-			};
-			label.Text = message;
-
-			var ok = new Button(24, 7, "Ok");
-			ok.HotKey = Key.Enter;
-			ok.Clicked += () => { Application.RequestStop(); };
-
-			var dialog = new Dialog(title, 60, 11, ok);
-
-			dialog.Add(label);
-
-			Application.Run(dialog);
-		}
-		static string InputBox(string title, string prompt, string initialValue)
-		{
-			bool okpressed = false;
-
-			var label = new Label()
-			{
-				X = 1,
-				Y = 1,
-				Width = Dim.Fill(),
-				Height = 2
-			};
-			label.Text = prompt;
-
-			var entry = new TextField()
-			{
-				X = 1,
-				Y = 4,
-				Width = Dim.Fill() - 1,
-				Height = 1
-			};
-
-			entry.Text = initialValue;
-			entry.KeyDown += (View.KeyEventEventArgs keyEvent) =>
-			{
-				if (keyEvent.KeyEvent.Key == Key.Enter)
-				{
-					Application.RequestStop();
-					okpressed = true;
-				}
-			};
-
-			var ok = new Button(18, 6, "Ok");
-			ok.HotKey = Key.Enter;
-
-			var cancel = new Button(25, 6, "Cancel");
-			cancel.HotKey = Key.Esc;
-
-			ok.Clicked += () => { Application.RequestStop(); okpressed = true; };
-			cancel.Clicked += () => { Application.RequestStop(); };
-
-			var dialog = new Dialog(title, 60, 10, ok, cancel);
-
-			dialog.Add(label);
-			dialog.Add(entry);
-
-			entry.SetFocus();
-
-			Application.Run(dialog);
-
-			if (okpressed)
-			{
-				return entry.Text.ToString();
-			}
-			else
-			{
-				return "";
-			}
-		}
 
 		// cross platform - launch the system web browser with the supplied url
 		// based on https://brockallen.com/2016/09/24/process-start-for-urls-on-net-core/
@@ -712,7 +758,7 @@ namespace Romulus
 
 			if (found)
 			{
-				MsgBoxOK("Bookmark exists", "That URL is already in the bookmark list:\n\n" + _currentUri.AbsoluteUri);
+				Dialogs.MsgBoxOK("Bookmark exists", "That URL is already in the bookmark list:\n\n" + _currentUri.AbsoluteUri);
 			}
 			else
 			{
@@ -741,7 +787,7 @@ namespace Romulus
 				}
 
 				LoadBookmarks();
-				MsgBoxOK("Bookmark added", "Bookmark added to: " + _currentUri.AbsoluteUri);
+				Dialogs.MsgBoxOK("Bookmark added", "Bookmark added to: " + _currentUri.AbsoluteUri);
 			}
 		}
 
@@ -774,13 +820,15 @@ namespace Romulus
 						Title = "_" + linkinfo[1],
 						Action = () =>
 						{
-							LoadLink(new Uri(linkinfo[0]));
+							LoadGeminiLink(new Uri(linkinfo[0]));
 						}
 					});
 				}
 			}
 			_bookmarksMenu.Children = bms.ToArray();
 		}
+
+
 
 		public class CachedPage
 		{
@@ -830,7 +878,6 @@ namespace Romulus
 
 				if (preformat)
 				{
-					_lineType = "```";
 					_display = Space(preformatIndent) + line;
 					return;
 				}
@@ -919,7 +966,6 @@ namespace Romulus
 				get
 				{
 					return _lineType;
-
 				}
 			}
 
