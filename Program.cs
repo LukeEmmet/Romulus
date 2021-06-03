@@ -25,6 +25,7 @@ namespace Romulus
 		private static ListView _lineView;
 		private static Uri _currentUri;
 		private static Window _win;
+		private static MenuBar _menu;
 		//private static bool insecure;
 
 		static void Main(string[] args)
@@ -110,13 +111,18 @@ namespace Romulus
 					ColorScheme = Colors.Menu
 				};
 
+				var cs = new ColorScheme();
+				cs.Normal = new Terminal.Gui.Attribute(Colors.Menu.Normal.Foreground, Colors.Menu.Normal.Background);
+				cs.Focus = new Terminal.Gui.Attribute(Color.Black, Color.Gray);		//invert
+				_lineView.ColorScheme = cs;
+
 				_lineView.OpenSelectedItem += (ListViewItemEventArgs e) =>
 				{
 					HandleActivate(e.Value, _currentUri);
 				};
 
 				// Creates a menubar, the item "New" has a help menu.
-				var menu = new MenuBar(new MenuBarItem[] {
+				_menu = new MenuBar(new MenuBarItem[] {
 					new MenuBarItem ("_File", new MenuItem [] {
 						new MenuItem("_Open URL", "", () => {OpenUserChosenUri(); }),
 						new MenuItem("_Reload", "", () => {Reload(); }),
@@ -130,7 +136,7 @@ namespace Romulus
 
 
 				LoadBookmarks();
-				_top.Add(menu);
+				_top.Add(_menu);
 
 				// Add some controls, 
 				_win.Add(
@@ -156,10 +162,49 @@ namespace Romulus
 			return n == 0;
 		}
 
+		//would be nice if this was an intrinsic method for the listview, but it is missing 
+		static void EnsureVisibleLine(int lineIndex)
+        {
+			int topH, winH, listH, menuH;
+			
+			if (
+				((View)_top).GetCurrentHeight(out topH)
+				)
+			{
+				((View)_menu).GetCurrentHeight(out menuH);
+				((View)_win).GetCurrentHeight(out winH);
+				((View)_lineView).GetCurrentHeight(out listH);
+
+				//calculate the inner height of the listview based on how we understand the 
+				//overall layout, so some assumptions here about window design etc
+				int winInnerH = (topH - menuH) - 2;		//2 for window border
+				int listInnerH = winInnerH + listH;		//accomodate line view margin
+
+				if (
+					(lineIndex >= _lineView.TopItem) &&
+					(lineIndex <= _lineView.TopItem + listInnerH))
+                {
+					//its in view so just highlight it
+                } else
+                {
+					//scroll to show the item
+					_lineView.TopItem = lineIndex;
+                }
+
+				_lineView.SelectedItem = lineIndex;
+
+				//seems to be a bug maybe in terminal.gui that the window is not repainted after the selection
+				//so we force a repaint and focus
+				_lineView.SetFocus();
+				_win.Redraw(_win.Bounds);
+
+			}
+
+		}
 		static void BuildStructureMenu(List<GeminiLine> displayLines)
 		{
 			var bms = new List<MenuItem>();
-			var lineNum = 1;
+			var lineNum = 0;
 			var accelerators = new List<string>();
 			
 			foreach (var line in displayLines)
@@ -183,8 +228,7 @@ namespace Romulus
 
 						Action = () =>
 						{
-							_lineView.TopItem = n - 1;
-							_lineView.SelectedItem = _lineView.TopItem;
+							EnsureVisibleLine(n);
 						},
 					}); 
 				}
@@ -611,7 +655,11 @@ namespace Romulus
 
 			var sourcelines = useContent.Split('\n');
 
-			lineWidth = 70;
+			//we wrap content at 75 chars
+			const int paraWrap = 73;        //default wrap for paragraphs, which are indented by 2
+			const int otherWrap = 70;       //for other line types we wrap smaller to accomodate deeper indent by extra 3
+
+			lineWidth = paraWrap;			//default
 			bool preformat = false;
 			bool isNimigem = false;
 
@@ -652,6 +700,8 @@ namespace Romulus
 					}
 					else
 					{
+						lineWidth = otherWrap;		//default assume indented, or a heading
+
 						var linkTarget = "";
 						var display = sourceline;
 						if (lineType == "=>")
@@ -665,6 +715,7 @@ namespace Romulus
 							if (lineType == "" || lineType == "p")
 							{
 								display = sourceline;
+								lineWidth = paraWrap;		//not indented
 							}
 							else if (sourceline.Length > lineType.Length)
 							{
