@@ -26,6 +26,8 @@ namespace Romulus
 		private static Uri _currentUri;
 		private static Window _win;
 		private static MenuBar _menu;
+		private static int _charWrap;
+
 		//private static bool insecure;
 
 		static void Main(string[] args)
@@ -44,6 +46,12 @@ namespace Romulus
 
 			//commandLineApplication.HelpOption("-? | -h | --help");
 
+			_charWrap = 75;     //default - can provide UI for ths
+			CommandOption charWrap = commandLineApplication.Option(
+				"-w | --charWrap", "wrap content at this column",
+				CommandOptionType.SingleValue);
+
+
 			commandLineApplication.ExtendedHelpText = "Romulus <url>";
 			string startUrl = "";
 
@@ -52,6 +60,8 @@ namespace Romulus
 				_homeUri = new Uri("about:home");
 				_initialUri = _homeUri;
 				
+				_charWrap = charWrap.HasValue() ? int.Parse(charWrap.Value()) : 75;
+
 				if (commandLineApplication.RemainingArguments.Count > 0)
 				{
 					startUrl = commandLineApplication.RemainingArguments[0].ToString();     //use the first one
@@ -121,6 +131,20 @@ namespace Romulus
 					HandleActivate(e.Value, _currentUri);
 				};
 
+				_lineView.KeyPress += (View.KeyEventEventArgs e) =>
+				{
+					if (e.KeyEvent.Key == Key.Tab)
+					{
+						JumpLink(1);
+						e.Handled = true;
+					}
+					else if (e.KeyEvent.Key == Key.BackTab)
+					{
+						JumpLink(-1);
+						e.Handled = true;
+					}
+				};
+
 				// Creates a menubar, the item "New" has a help menu.
 				_menu = new MenuBar(new MenuBarItem[] {
 					new MenuBarItem ("_File", new MenuItem [] {
@@ -161,6 +185,51 @@ namespace Romulus
 			var n = MessageBox.Query(50, 7, "Quit Romulus", "Are you sure you want to quit Romulus?", "Yes", "No");
 			return n == 0;
 		}
+
+		static void JumpLink(int direction)
+        {
+			var gemLines = (List<GeminiLine>)_lineView.Source.ToList();
+			var selected = _lineView.SelectedItem;
+			int curIndex;
+
+			if (direction > 0)
+            {
+				if (selected == gemLines.Count - 1)
+                {
+					return;
+                } else
+                {
+					curIndex = selected + 1;	//start from next item when scanning forwards
+                }
+            } else
+            {
+				if (selected == 0)
+                {
+					return;
+                } else
+                {
+					curIndex = selected - 1;	//start from previous item when scanning backwards
+                }
+            }
+
+			while ((curIndex >= 0) && (curIndex < _lineView.Source.Count))
+            {
+				var gemLine = (GeminiLine)gemLines[curIndex]; 
+				if (gemLine.LineType == "=>")
+                {
+					EnsureVisibleLine(curIndex);
+					return;		//we are done
+                }
+
+				if (direction > 0)
+                {
+					curIndex++;		//forwards
+                } else
+                {
+					curIndex--;		//backwards
+                }
+            }
+        }
 
 		//would be nice if this was an intrinsic method for the listview, but it is missing 
 		static void EnsureVisibleLine(int lineIndex)
@@ -265,8 +334,8 @@ namespace Romulus
 		{
 			if (_currentUri != null)
 			{
+				_history.Pop();      //remove current it will be the same as reloaded Uri, so we only get one history entry
 				LoadGeminiLink(_currentUri);
-				_history.Pop();      //remove as it will be the same as current Uri, so we only get one history entry
 			}
 		}
 
@@ -655,9 +724,11 @@ namespace Romulus
 
 			var sourcelines = useContent.Split('\n');
 
-			//we wrap content at 75 chars
-			const int paraWrap = 73;        //default wrap for paragraphs, which are indented by 2
-			const int otherWrap = 70;       //for other line types we wrap smaller to accomodate deeper indent by extra 3
+			var intColwrap = _charWrap > 30 ? _charWrap : 30;	//min wrap is 30, otherwise at user request
+
+			//we wrap content by fixed size at the moment
+			int paraWrap = intColwrap - 2;        //default wrap for paragraphs, which are indented by 2
+			int otherWrap = intColwrap - 5;       //for other line types we wrap smaller to accomodate deeper indent by extra 3
 
 			lineWidth = paraWrap;			//default
 			bool preformat = false;
