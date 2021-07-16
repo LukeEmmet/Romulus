@@ -118,12 +118,11 @@ namespace Romulus
                     Y = 1,
                     Height = Dim.Fill() - 1,
                     Width = Dim.Fill() - 1,
-                    ColorScheme = Colors.Menu
                 };
 
                 var cs = new ColorScheme();
-                cs.Normal = new Terminal.Gui.Attribute(Colors.Menu.Normal.Foreground, Colors.Menu.Normal.Background);
-                cs.Focus = new Terminal.Gui.Attribute(Color.Black, Color.Gray);		//invert
+                cs.Normal = new Terminal.Gui.Attribute(Colors.Menu.Normal.Foreground, Colors.Menu.Normal.Background);       //blend with background
+                cs.Focus = new Terminal.Gui.Attribute(Colors.Menu.Normal.Background, Colors.Menu.Normal.Foreground);		//invert
                 _lineView.ColorScheme = cs;
 
                 _lineView.OpenSelectedItem += (ListViewItemEventArgs e) =>
