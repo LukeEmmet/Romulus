@@ -37,7 +37,7 @@ A binary download for Windows x64 is available on https://www.marmaladefoo.com/p
 
 Romulus is a .NET Core C# application, so it should be able to be compiled on the supported platforms, including Windows and Linux.
 
-Romulus uses the SmolNetSharp library https://github.com/LukeEmmet/SmolNetSharp which should be checked out into a sibling folder, for example
+Romulus uses the [SmolNetSharp](https://github.com/LukeEmmet/SmolNetSharp) library  which should be checked out into a sibling folder, for example
 
 ```
 Projects
@@ -51,6 +51,7 @@ https://github.com/migueldeicaza/gui.cs
 # Known issues
 
 * Windows Terminal does not yet support mouse - use standard command shell
+* On Linux you need to move your mouse or touch the keyboard to start the rendering (probable GUI.cs bug)
 
 # Feedback
 
