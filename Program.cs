@@ -163,9 +163,9 @@ namespace Romulus
                      _lineView
                 );
 
-                //TODO: for some unknown reason _top.Ready is not firing in linux until the user moves a mouse or touches the keyboard.
-                //maybe need to upgrade gui.cs to latest version
-                _top.Ready += () =>
+                //For some unknown reason _top.Ready is not firing in linux until the user moves a mouse or touches the keyboard.
+                //so we initialise on Loaded, which seems to work
+                _top.Loaded += () =>
                 {
                     LoadHandledLink(_initialUri);
                 };

@@ -51,7 +51,7 @@ https://github.com/migueldeicaza/gui.cs
 # Known issues
 
 * Windows Terminal does not yet support mouse - use standard command shell
-* On Linux you need to move your mouse or touch the keyboard to start the rendering (probable GUI.cs bug)
+* Linux shell - on returning from application control characters may be send to the shell on mouse moving (fix: start a new shell instance)
 
 # Feedback
 
