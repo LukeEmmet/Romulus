@@ -104,7 +104,7 @@ namespace Romulus
                 {
                     X = 0,
                     Y = 1, // Leave one row for the toplevel menu
-                    ColorScheme = Colors.Menu,
+                    ColorScheme = Colors.Menu,      //to blend with menu
                     // By using Dim.Fill(), it will automatically resize without manual intervention
                     Width = Dim.Fill(),
                     Height = Dim.Fill()
@@ -118,12 +118,8 @@ namespace Romulus
                     Y = 1,
                     Height = Dim.Fill() - 1,
                     Width = Dim.Fill() - 1,
+                    ColorScheme = Colors.Menu,      //to blend with window and menu background
                 };
-
-                var cs = new ColorScheme();
-                cs.Normal = new Terminal.Gui.Attribute(Colors.Menu.Normal.Foreground, Colors.Menu.Normal.Background);       //blend with background
-                cs.Focus = new Terminal.Gui.Attribute(Colors.Menu.Normal.Background, Colors.Menu.Normal.Foreground);		//invert
-                _lineView.ColorScheme = cs;
 
                 _lineView.OpenSelectedItem += (ListViewItemEventArgs e) =>
                 {
