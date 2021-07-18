@@ -358,7 +358,9 @@ namespace Romulus
         static bool TextIsUri(string text)
         {
             Uri outUri;
-            return Uri.TryCreate(text, UriKind.Absolute, out outUri);
+
+            return  Uri.TryCreate(text, UriKind.Absolute, out outUri);
+            
         }
 
         static string ReadAboutSchemeFile(Uri uri)
@@ -604,6 +606,25 @@ namespace Romulus
             }
         }
 
+        static bool IsHandledScheme(string link) {
+            var result = false;
+            Uri outUri;
+            if (Uri.TryCreate(link, UriKind.Absolute, out outUri)) {
+                
+                if (
+                    outUri.Scheme == "gemini" ||
+                    outUri.Scheme == "nimigem" ||
+                    outUri.Scheme == "about" ||
+                    outUri.Scheme == "http" ||
+                    outUri.Scheme == "https" 
+                    
+                ) {
+                    return true;
+                }
+           }
+
+            return result;
+        }
         static void HandleActivate(Object item, Uri currentUri)
         {
             var line = (GeminiLine)item;
@@ -611,7 +632,7 @@ namespace Romulus
             {
                 var link = line.Link;
 
-                if (TextIsUri(link))
+                if (TextIsUri(link) && IsHandledScheme(link))
                 {
                     //is a full URL 
                     var uri = new Uri(link);
@@ -1010,7 +1031,10 @@ namespace Romulus
                     if (Uri.TryCreate(_link, UriKind.Absolute, out outUri))
                     {
                         //is a full URL
-                        if ((outUri.Scheme != "gemini") && (outUri.Scheme != "about"))	//these ones are natively handled 
+                        if (
+                                (outUri.Scheme != "gemini") && (outUri.Scheme != "about")	//these ones are "normally decorated links"
+                                && (outUri.Scheme != "file")        //when running on linux, it seems unschemed relative paths may be converted to file:// scheme links not relative paths
+                        )
                         {
                             linkGlyph = "►";        //widely supported even in windows shell, unlike some other glyphs
 
@@ -1018,6 +1042,7 @@ namespace Romulus
                             {
                                 text += " (" + outUri.Scheme + ")";
                             }
+
                         }
                     }
 
