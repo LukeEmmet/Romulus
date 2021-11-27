@@ -512,7 +512,7 @@ namespace Romulus
             else
             {
                 //everything else is a problem for now
-                Dialogs.MsgBoxOK("Error", "Could not send content. Server Message was: " + resp.meta);
+                Dialogs.MsgBoxOK("Error", "Could not send content. Server Message was: \n" + resp.meta);
             }
         }
 
@@ -610,17 +610,40 @@ namespace Romulus
                     }
                     catch (Exception e)
                     {
-                        Dialogs.MsgBoxOK("Nimigem error", "Nimigem error: " + e.Message);
+                        Dialogs.MsgBoxOK("Nimigem error", "Nimigem error: \n" + e.Message);
                     }
 
                 }
             }
             else
             {
-                //No preceding Nimigem editable preformatted area was found.
-                //file uploading not yet implemented
-                
-                    Dialogs.MsgBoxOK("Nimigem error", "Sorry, file uploading to nimigem server not yet implemented by Romulus");
+                //No associated preceding Nimigem editable preformatted area was found.
+                //so send a file
+
+                //show a dialog to choose a file
+                var openDialog = new Terminal.Gui.OpenDialog("Nimigem upload", "Choose a file to send to the Nimigem server");
+                Application.Run(openDialog);
+
+                if (openDialog.FilePaths.Count > 0)
+                {
+                    var selectedPath = openDialog.FilePaths[0];
+                    var bytes = File.ReadAllBytes(selectedPath);
+                    var extension = Path.GetExtension(selectedPath);
+
+                    // since text/gemini is not widely known but might be more common for users of a gemini client
+                    // we test for it, otherwise we use the MimeTypes library to infer it
+                    var mediaType = (extension == ".gmi" || extension == ".gemini") ? "text/gemini" : MimeTypes.GetMimeType(selectedPath);
+
+                    try
+                    {
+                       SubmitNimigem(uri, bytes, mediaType);                        //send to the server
+                    }
+                    catch (Exception e)
+                    {
+                        Dialogs.MsgBoxOK("Nimigem error", "Nimigem error: \n" + e.Message);
+                    }
+                }
+
             }
         }
 
