@@ -516,19 +516,40 @@ namespace Romulus
             }
         }
 
+        
         static void HandleNimigemActivate(Uri uri)
         {
-            //gather the previous nimigem lines and let the user edit the text
 
+ 
             var preformattedLines = new List<GeminiLine>();
             var exitedPreformatted = false;
             var enteredPreformat = false;
             var foundNimigemEdit = false;
 
             var currentLine = _lineView.SelectedItem;
+
+            var activatedLine = (GeminiLine)_lineView.Source.ToList()[currentLine];
+            
+            //check if it is hinted as a null payload link
+            if (activatedLine.Line.StartsWith('\u2205'.ToString())) {
+                //send null payload
+                try
+                {
+                    SubmitNimigem(uri, Encoding.UTF8.GetBytes(""), "text/plain");
+                }
+                catch (Exception e)
+                {
+                    Dialogs.MsgBoxOK("Nimigem error", "Nimigem error: " + e.Message);
+                }
+                return;
+            }
+
+           //search back in the page for the linked text area
+           //gather the previous nimigem lines and let the user edit the text
             while (currentLine >= 0)
             {
                 var gemLine = (GeminiLine)_lineView.Source.ToList()[currentLine];
+                
                 if (gemLine.LineType == "```+")
                 {
                     enteredPreformat = true;
@@ -549,6 +570,7 @@ namespace Romulus
 
                 currentLine--;
             }
+           
 
             var sb = new StringBuilder();
             preformattedLines.Reverse();
@@ -596,15 +618,9 @@ namespace Romulus
             else
             {
                 //No preceding Nimigem editable preformatted area was found.
-                //send an empty post to the end point
-                try
-                {
-                    SubmitNimigem(uri, Encoding.UTF8.GetBytes(""), "text/plain");
-                }
-                catch (Exception e)
-                {
-                    Dialogs.MsgBoxOK("Nimigem error", "Nimigem error: " + e.Message);
-                }
+                //file uploading not yet implemented
+                
+                    Dialogs.MsgBoxOK("Nimigem error", "Sorry, file uploading to nimigem server not yet implemented by Romulus");
             }
         }
 
